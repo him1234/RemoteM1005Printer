@@ -26,6 +26,16 @@ jobs:
         with:
           gradle-version: "8.10.2"
 
+      - name: Enable AndroidX
+        run: |
+          mkdir -p ~/.gradle
+          {
+            echo "android.useAndroidX=true"
+            echo "android.enableJetifier=true"
+            echo "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8"
+          } >> ~/.gradle/gradle.properties
+          cat gradle.properties
+
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
 
