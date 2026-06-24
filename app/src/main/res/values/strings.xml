@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Remote M1005 Printer</string>
+    <string name="print_service_name">Orange Pi HP M1005 打印服务</string>
+    <string name="print_service_vendor">Orange Pi CUPS</string>
+</resources>

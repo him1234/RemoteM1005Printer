@@ -1,0 +1,3 @@
+<print-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.him1234.remotem1005.MainActivity"
+    android:vendor="@string/print_service_vendor" />
