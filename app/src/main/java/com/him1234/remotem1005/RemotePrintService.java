@@ -96,7 +96,9 @@ public class RemotePrintService extends PrintService {
 
     private String chooseOrientation(PrintJobInfo info) {
         PrintAttributes attrs = info.getAttributes();
-        if (attrs != null && attrs.getMediaSize() != null && attrs.getMediaSize().isLandscape()) {
+        if (attrs != null
+                && attrs.getMediaSize() != null
+                && attrs.getMediaSize().getWidthMils() > attrs.getMediaSize().getHeightMils()) {
             return "landscape";
         }
         return "portrait";
