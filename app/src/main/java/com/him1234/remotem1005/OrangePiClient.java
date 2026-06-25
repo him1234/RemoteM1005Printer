@@ -114,7 +114,7 @@ final class OrangePiClient {
         fields.put("format", "pdf");
 
         byte[] body = encodeFields(fields).getBytes(StandardCharsets.UTF_8);
-        HttpURLConnection conn = open(ConfigStore.getBaseUrl(context), "/scan", "POST", 8000, 200000);
+        HttpURLConnection conn = open(ConfigStore.getBaseUrl(context), "/scan", "POST", 8000, 0);
         conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=utf-8");
         conn.setRequestProperty("X-Requested-With", "fetch");
         conn.setDoOutput(true);
