@@ -57,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity {
         root.addView(card, matchWrap());
 
         shell.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        InsetUtils.apply(this, toolbar, scroll);
         return shell;
     }
 

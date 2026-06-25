@@ -149,6 +149,7 @@ public class MainActivity extends AppCompatActivity {
         root.addView(statusText, matchWrap());
 
         shell.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        InsetUtils.apply(this, toolbar, scroll);
         return shell;
     }
 
