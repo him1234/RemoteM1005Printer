@@ -16,7 +16,9 @@
 - 查看打印机与扫描仪状态
 - 唤醒 LCD 背光
 - 从手机选择 PDF、Word、图片等文件上传到 `/print`
-- 从手机触发扫描，并把扫描结果保存为 PDF
+- 从手机触发扫描，可选择 PDF 或 PNG 输出
+- 扫描结果先进入 App 内预览页，再选择保存或放弃
+- 点击保存时调用 Android 系统文件选择器，每次由用户选择保存位置
 - 注册 Android `PrintService`，在其它 App 的系统打印界面里选择 `HP LaserJet M1005 @ Orange Pi`
 
 ## 重要限制

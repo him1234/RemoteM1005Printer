@@ -23,16 +23,17 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.color.DynamicColors;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.divider.MaterialDivider;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textview.MaterialTextView;
 
+import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/** 主界面：保留常用操作，配置和关于入口放到右上角菜单。 */
+/** 主界面：提供远程打印、扫描、状态查看和设备控制入口。 */
 public class MainActivity extends AppCompatActivity {
     private static final int MENU_SETTINGS = 1;
     private static final int MENU_ABOUT = 2;
@@ -42,24 +43,33 @@ public class MainActivity extends AppCompatActivity {
     private final String[] orientationValues = new String[]{"portrait", "landscape"};
     private final String[] dpiValues = new String[]{"75", "100", "150", "200", "300", "400", "600", "1200"};
     private final String[] modeValues = new String[]{"Color", "Gray", "Lineart"};
+    private final String[] scanFormatValues = new String[]{"PDF", "PNG"};
 
     private MaterialAutoCompleteTextView paperSpinner;
     private MaterialAutoCompleteTextView orientationSpinner;
     private MaterialAutoCompleteTextView scanDpiSpinner;
     private MaterialAutoCompleteTextView scanModeSpinner;
-    private MaterialTextView statusText;
+    private MaterialAutoCompleteTextView scanFormatSpinner;
+    private MaterialTextView topStatusText;
+    private MaterialTextView topMetaText;
     private Dialog loadingDialog;
     private MaterialTextView loadingText;
     private ActivityResultLauncher<String[]> printFileLauncher;
-    private ActivityResultLauncher<String> scanFileLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         DynamicColors.applyToActivityIfAvailable(this);
         super.onCreate(savedInstanceState);
         printFileLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::handlePrintPick);
-        scanFileLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument("application/pdf"), this::handleScanTarget);
         setContentView(buildContent());
+        refreshTopStatus("设备状态", "正在读取打印机和扫描仪状态...");
+        refreshDeviceStatus(false);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshDeviceStatus(false);
     }
 
     @Override
@@ -103,6 +113,18 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         shell.addView(toolbar, matchWrap());
 
+        LinearLayout infoBar = new LinearLayout(this);
+        infoBar.setOrientation(LinearLayout.VERTICAL);
+        infoBar.setPadding(dp(16), dp(12), dp(16), dp(12));
+        topStatusText = new MaterialTextView(this);
+        topStatusText.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium);
+        topMetaText = new MaterialTextView(this);
+        topMetaText.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        topMetaText.setPadding(0, dp(6), 0, 0);
+        infoBar.addView(topStatusText, matchWrap());
+        infoBar.addView(topMetaText, matchWrap());
+        shell.addView(infoBar, matchWrap());
+
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
@@ -122,43 +144,65 @@ public class MainActivity extends AppCompatActivity {
 
         MaterialCardView scanCard = card();
         addToCard(scanCard, sectionLabel("扫描到手机"));
-        addToCard(scanCard, bodyText("高 DPI 扫描可能持续较长时间，等待期间请保持手机与 Orange Pi 在同一网络。"));
+        addToCard(scanCard, bodyText("可选择 PDF 或 PNG 输出。扫描完成后先进入 App 内预览页，再由你选择保存或放弃。"));
         scanDpiSpinner = dropdown(dpiValues);
         scanModeSpinner = dropdown(modeValues);
+        scanFormatSpinner = dropdown(scanFormatValues);
         addToCard(scanCard, labeledInput("DPI", scanDpiSpinner));
         addToCard(scanCard, labeledInput("模式", scanModeSpinner));
-        addToCard(scanCard, button("开始扫描并保存 PDF", v -> createScanTarget()));
+        addToCard(scanCard, labeledInput("输出格式", scanFormatSpinner));
+        addToCard(scanCard, button("开始扫描并预览", v -> startScan()));
         root.addView(scanCard, matchWrap());
 
         MaterialCardView serviceCard = card();
         addToCard(serviceCard, sectionLabel("系统打印服务"));
-        addToCard(serviceCard, bodyText("启用 Android 打印服务后，其他应用可以通过系统打印菜单选择这台 HP M1005。"));
+        addToCard(serviceCard, bodyText("启用 Android 打印服务后，其他 App 可以通过系统打印菜单选择这台 HP M1005。"));
         addToCard(serviceCard, button("打开 Android 打印设置", v -> openPrintSettings()));
         root.addView(serviceCard, matchWrap());
 
         MaterialCardView toolsCard = card();
         addToCard(toolsCard, sectionLabel("设备控制"));
-        addToCard(toolsCard, button("测试设备状态", v -> testStatus()));
+        addToCard(toolsCard, button("刷新设备状态", v -> refreshDeviceStatus(true)));
         addToCard(toolsCard, button("唤醒 LCD 背光", v -> wakeLcd()));
         addToCard(toolsCard, button("打开 Orange Pi 网页", v -> openWebUi()));
         root.addView(toolsCard, matchWrap());
 
-        statusText = new MaterialTextView(this);
-        statusText.setText("Ready");
-        statusText.setPadding(dp(8), dp(16), dp(8), 0);
-        root.addView(statusText, matchWrap());
-
+        root.addView(new MaterialDivider(this), matchWrap());
         shell.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         InsetUtils.apply(this, toolbar, scroll);
         return shell;
     }
 
-    private void testStatus() {
-        runTask("正在读取设备状态...", () -> {
-            String printer = OrangePiClient.friendlyText(OrangePiClient.getText(ConfigStore.getBaseUrl(this), "/api/status"));
-            String scanner = OrangePiClient.friendlyText(OrangePiClient.getText(ConfigStore.getBaseUrl(this), "/api/scanner"));
-            return "打印机状态:\n" + printer + "\n\n扫描仪状态:\n" + scanner;
+    private void refreshDeviceStatus(boolean showDialog) {
+        if (showDialog) {
+            showLoading("正在读取设备状态...");
+        }
+        worker.execute(() -> {
+            try {
+                String printer = OrangePiClient.friendlyText(OrangePiClient.getText(ConfigStore.getBaseUrl(this), "/api/status"));
+                String scanner = OrangePiClient.friendlyText(OrangePiClient.getText(ConfigStore.getBaseUrl(this), "/api/scanner"));
+                runOnUiThread(() -> {
+                    if (showDialog) {
+                        dismissLoading();
+                    }
+                    refreshTopStatus("设备状态", "打印机: " + compact(printer) + "\n扫描仪: " + compact(scanner));
+                });
+            } catch (Exception exc) {
+                runOnUiThread(() -> {
+                    if (showDialog) {
+                        dismissLoading();
+                    }
+                    refreshTopStatus("设备状态读取失败", exc.getMessage());
+                });
+            }
         });
+    }
+
+    private String compact(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return "未知";
+        }
+        return text.trim().replace("\r", " ").replace("\n", " ");
     }
 
     private void openWebUi() {
@@ -184,8 +228,31 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void createScanTarget() {
-        scanFileLauncher.launch("m1005-scan.pdf");
+    private void startScan() {
+        String dpi = String.valueOf(scanDpiSpinner.getText());
+        String mode = String.valueOf(scanModeSpinner.getText());
+        String format = String.valueOf(scanFormatSpinner.getText());
+        showLoading("正在扫描，请等待...");
+        refreshTopStatus("扫描中", "DPI " + dpi + " / " + mode + " / " + format);
+        worker.execute(() -> {
+            try {
+                File temp = OrangePiClient.scanToTempFile(this, dpi, mode, format);
+                Intent intent = new Intent(this, ScanPreviewActivity.class);
+                intent.putExtra(ScanPreviewActivity.EXTRA_TEMP_PATH, temp.getAbsolutePath());
+                intent.putExtra(ScanPreviewActivity.EXTRA_MIME_TYPE, OrangePiClient.scanMimeType(format));
+                intent.putExtra(ScanPreviewActivity.EXTRA_DEFAULT_NAME, OrangePiClient.defaultScanFileName(format));
+                runOnUiThread(() -> {
+                    dismissLoading();
+                    refreshTopStatus("扫描完成", "请在预览页选择保存或放弃。");
+                    startActivity(intent);
+                });
+            } catch (Exception exc) {
+                runOnUiThread(() -> {
+                    dismissLoading();
+                    refreshTopStatus("扫描失败", exc.getMessage());
+                });
+            }
+        });
     }
 
     private void wakeLcd() {
@@ -206,35 +273,33 @@ public class MainActivity extends AppCompatActivity {
         runTask("正在上传打印文件...", () -> OrangePiClient.friendlyText(OrangePiClient.uploadPrintUri(this, uri, paper, orientation, 1)));
     }
 
-    private void handleScanTarget(Uri uri) {
-        if (uri == null) {
-            return;
-        }
-        String dpi = String.valueOf(scanDpiSpinner.getText());
-        String mode = String.valueOf(scanModeSpinner.getText());
-        runTask("正在扫描，请等待...", () -> {
-            OrangePiClient.scanToUri(this, uri, dpi, mode);
-            return "扫描完成，文件已保存到你选择的位置。";
-        });
-    }
-
     private void runTask(String runningText, Task task) {
-        statusText.setText(runningText);
+        refreshTopStatus(runningText, "请稍候");
         showLoading(runningText);
         worker.execute(() -> {
             try {
                 String result = task.run();
                 runOnUiThread(() -> {
                     dismissLoading();
-                    statusText.setText(result);
+                    refreshTopStatus("操作完成", result);
+                    refreshDeviceStatus(false);
                 });
             } catch (Exception exc) {
                 runOnUiThread(() -> {
                     dismissLoading();
-                    statusText.setText("失败: " + exc.getMessage());
+                    refreshTopStatus("操作失败", exc.getMessage());
                 });
             }
         });
+    }
+
+    private void refreshTopStatus(String title, String detail) {
+        if (topStatusText != null) {
+            topStatusText.setText(title == null ? "" : title);
+        }
+        if (topMetaText != null) {
+            topMetaText.setText(detail == null ? "" : detail);
+        }
     }
 
     private void showLoading(String text) {
@@ -249,7 +314,7 @@ public class MainActivity extends AppCompatActivity {
             loadingText.setGravity(Gravity.CENTER);
             loadingText.setPadding(0, dp(16), 0, 0);
             box.addView(loadingText, matchWrap());
-            loadingDialog = new MaterialAlertDialogBuilder(this)
+            loadingDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                     .setView(box)
                     .create();
             loadingDialog.setCanceledOnTouchOutside(false);
@@ -306,10 +371,10 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(0, 0, 0, dp(12));
-        MaterialTextView t = new MaterialTextView(this);
-        t.setText(label);
-        t.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge);
-        box.addView(t);
+        MaterialTextView text = new MaterialTextView(this);
+        text.setText(label);
+        text.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge);
+        box.addView(text);
         box.addView(field, matchWrap());
         return box;
     }

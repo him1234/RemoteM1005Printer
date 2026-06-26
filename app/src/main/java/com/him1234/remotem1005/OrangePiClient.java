@@ -5,8 +5,12 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
 
+import org.json.JSONObject;
+
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -14,12 +18,13 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
-import org.json.JSONObject;
-
-/** 与 Orange Pi 后端通信的轻量客户端。 */
+/** 与 Orange Pi printer-web 后端通信的轻量客户端。 */
 final class OrangePiClient {
     private OrangePiClient() {
     }
@@ -72,8 +77,11 @@ final class OrangePiClient {
             if (json.has("message")) {
                 return json.optString("message");
             }
+            if (json.has("ok")) {
+                return json.optBoolean("ok") ? "成功" : "失败";
+            }
         } catch (Exception ignored) {
-            // 返回体不是 JSON 时，原样显示更便于调试。
+            // 非 JSON 返回体直接展示原文，便于现场排障。
         }
         return text;
     }
@@ -106,12 +114,18 @@ final class OrangePiClient {
         );
     }
 
-    static void scanToUri(Context context, Uri outputUri, String resolution, String mode) throws IOException {
+    static File scanToTempFile(Context context, String resolution, String mode, String format) throws IOException {
+        String normalizedFormat = normalizeScanFormat(format);
+        File output = new File(context.getCacheDir(), defaultScanFileName(normalizedFormat));
+        if (output.exists() && !output.delete()) {
+            throw new IOException("无法覆盖旧扫描临时文件");
+        }
+
         Map<String, String> fields = new LinkedHashMap<>();
         addPin(context, fields);
         fields.put("resolution", resolution);
         fields.put("mode", mode);
-        fields.put("format", "pdf");
+        fields.put("format", normalizedFormat);
 
         byte[] body = encodeFields(fields).getBytes(StandardCharsets.UTF_8);
         HttpURLConnection conn = open(ConfigStore.getBaseUrl(context), "/scan", "POST", 8000, 0);
@@ -126,14 +140,12 @@ final class OrangePiClient {
         }
 
         try (InputStream in = new BufferedInputStream(conn.getInputStream());
-             OutputStream out = context.getContentResolver().openOutputStream(outputUri, "w")) {
-            if (out == null) {
-                throw new IOException("无法打开 Android 保存位置");
-            }
+             OutputStream out = new FileOutputStream(output)) {
             copy(in, out);
         } finally {
             conn.disconnect();
         }
+        return output;
     }
 
     private static Map<String, String> printFields(Context context, String paper, String orientation, int copies) {
@@ -237,7 +249,7 @@ final class OrangePiClient {
                 }
             }
         } catch (Exception ignored) {
-            // 内容提供器不返回文件名时，回退到默认名称。
+            // 内容提供器不返回文件名时回退到默认名称。
         }
         return "android-upload.pdf";
     }
@@ -248,6 +260,24 @@ final class OrangePiClient {
             name = "android-upload.pdf";
         }
         return name.replace("\"", "_").replace("\r", "_").replace("\n", "_");
+    }
+
+    static String normalizeScanFormat(String format) {
+        String value = format == null ? "pdf" : format.trim().toLowerCase(Locale.US);
+        if ("png".equals(value)) {
+            return "png";
+        }
+        return "pdf";
+    }
+
+    static String scanMimeType(String format) {
+        return "png".equals(normalizeScanFormat(format)) ? "image/png" : "application/pdf";
+    }
+
+    static String defaultScanFileName(String format) {
+        String value = normalizeScanFormat(format);
+        String stamp = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(new Date());
+        return "scan-" + stamp + "." + value;
     }
 
     private static void writeAscii(OutputStream out, String value) throws IOException {

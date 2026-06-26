@@ -24,6 +24,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".ScanPreviewActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".AboutActivity"
             android:exported="false" />
 
