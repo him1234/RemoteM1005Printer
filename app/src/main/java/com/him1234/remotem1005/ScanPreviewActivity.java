@@ -1,5 +1,7 @@
 package com.him1234.remotem1005;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.pdf.PdfRenderer;
@@ -16,17 +18,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
 
-import androidx.activity.ComponentActivity;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 /** 扫描结果预览页：用户确认后再通过系统文件选择器保存。 */
-public class ScanPreviewActivity extends ComponentActivity {
+public class ScanPreviewActivity extends Activity {
+    private static final int REQUEST_SAVE_SCAN = 2001;
+
     static final String EXTRA_TEMP_PATH = "temp_path";
     static final String EXTRA_MIME_TYPE = "mime_type";
     static final String EXTRA_DEFAULT_NAME = "default_name";
@@ -35,7 +35,6 @@ public class ScanPreviewActivity extends ComponentActivity {
     private String mimeType;
     private String defaultName;
     private boolean savedOrDiscarded;
-    private ActivityResultLauncher<String> saveLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,8 +51,15 @@ public class ScanPreviewActivity extends ComponentActivity {
             defaultName = mimeType.equals("image/png") ? "scan.png" : "scan.pdf";
         }
 
-        saveLauncher = registerForActivityResult(new ActivityResultContracts.CreateDocument(mimeType), this::saveToUri);
         setContentView(buildContent());
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_SAVE_SCAN && resultCode == RESULT_OK && data != null) {
+            saveToUri(data.getData());
+        }
     }
 
     @Override
@@ -128,7 +134,7 @@ public class ScanPreviewActivity extends ComponentActivity {
         discard.setOnClickListener(v -> discardAndFinish());
         Button save = new Button(this);
         save.setText("保存");
-        save.setOnClickListener(v -> saveLauncher.launch(defaultName));
+        save.setOnClickListener(v -> pickSaveLocation());
         LinearLayout.LayoutParams buttonLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         buttonLp.setMargins(dp(4), 0, dp(4), 0);
         buttons.addView(discard, buttonLp);
@@ -138,6 +144,14 @@ public class ScanPreviewActivity extends ComponentActivity {
         shell.addView(buttons, matchWrap());
         InsetUtils.apply(this, toolbar, buttons);
         return shell;
+    }
+
+    private void pickSaveLocation() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType(mimeType);
+        intent.putExtra(Intent.EXTRA_TITLE, defaultName);
+        startActivityForResult(intent, REQUEST_SAVE_SCAN);
     }
 
     private PdfPreview renderPdfFirstPage(File file) throws Exception {

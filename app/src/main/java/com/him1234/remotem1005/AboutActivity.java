@@ -1,5 +1,6 @@
 package com.him1234.remotem1005;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -7,10 +8,8 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
-import androidx.activity.ComponentActivity;
-
 /** 关于页：说明软件用途、版本和限制。 */
-public class AboutActivity extends ComponentActivity {
+public class AboutActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

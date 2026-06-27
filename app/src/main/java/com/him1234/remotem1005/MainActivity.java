@@ -2,6 +2,7 @@ package com.him1234.remotem1005;
 
 import android.app.Dialog;
 import android.app.AlertDialog;
+import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -18,10 +19,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toolbar;
 
-import androidx.activity.ComponentActivity;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-
 import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -29,9 +26,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /** 主界面：提供远程打印、扫描、状态查看和设备控制入口。 */
-public class MainActivity extends ComponentActivity {
+public class MainActivity extends Activity {
     private static final int MENU_SETTINGS = 1;
     private static final int MENU_ABOUT = 2;
+    private static final int REQUEST_PRINT_FILE = 1001;
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final String[] paperValues = new String[]{"A4", "A5", "A6", "B5", "JB5", "Letter", "Legal", "Executive", "Statement", "Folio", "Oficio", "16k", "Env10", "EnvDL", "EnvC5", "EnvMonarch"};
@@ -49,12 +47,10 @@ public class MainActivity extends ComponentActivity {
     private TextView topMetaText;
     private Dialog loadingDialog;
     private TextView loadingText;
-    private ActivityResultLauncher<String[]> printFileLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        printFileLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::handlePrintPick);
         setContentView(buildContent());
         refreshTopStatus("设备状态", "正在读取打印机和扫描仪状态...");
         refreshDeviceStatus(false);
@@ -71,6 +67,14 @@ public class MainActivity extends ComponentActivity {
         worker.shutdownNow();
         dismissLoading();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_PRINT_FILE && resultCode == RESULT_OK && data != null) {
+            handlePrintPick(data.getData());
+        }
     }
 
     private View buildContent() {
@@ -197,7 +201,10 @@ public class MainActivity extends ComponentActivity {
     }
 
     private void pickPrintFile() {
-        printFileLauncher.launch(new String[]{
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
                 "application/pdf",
                 "application/msword",
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -205,6 +212,7 @@ public class MainActivity extends ComponentActivity {
                 "image/png",
                 "text/plain"
         });
+        startActivityForResult(intent, REQUEST_PRINT_FILE);
     }
 
     private void startScan() {

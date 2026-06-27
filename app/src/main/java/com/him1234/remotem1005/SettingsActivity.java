@@ -1,5 +1,6 @@
 package com.him1234.remotem1005;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
@@ -11,10 +12,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
 
-import androidx.activity.ComponentActivity;
-
 /** 设置页：配置 Orange Pi 后端地址和可选 PIN。 */
-public class SettingsActivity extends ComponentActivity {
+public class SettingsActivity extends Activity {
     private EditText baseUrlInput;
     private EditText pinInput;
 
