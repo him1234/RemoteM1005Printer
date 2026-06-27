@@ -8,19 +8,17 @@ import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Toolbar;
 
+import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.color.DynamicColors;
-import com.google.android.material.textview.MaterialTextView;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,7 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /** 扫描结果预览页：用户确认后再通过系统文件选择器保存。 */
-public class ScanPreviewActivity extends AppCompatActivity {
+public class ScanPreviewActivity extends ComponentActivity {
     static final String EXTRA_TEMP_PATH = "temp_path";
     static final String EXTRA_MIME_TYPE = "mime_type";
     static final String EXTRA_DEFAULT_NAME = "default_name";
@@ -41,7 +39,6 @@ public class ScanPreviewActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DynamicColors.applyToActivityIfAvailable(this);
         super.onCreate(savedInstanceState);
 
         String path = getIntent().getStringExtra(EXTRA_TEMP_PATH);
@@ -76,7 +73,7 @@ public class ScanPreviewActivity extends AppCompatActivity {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
 
-        MaterialToolbar toolbar = new MaterialToolbar(this);
+        Toolbar toolbar = new Toolbar(this);
         toolbar.setTitle("扫描预览");
         toolbar.setSubtitle(mimeType.equals("image/png") ? "PNG 图片" : "PDF 文档");
         toolbar.setNavigationIcon(android.R.drawable.ic_menu_revert);
@@ -89,9 +86,9 @@ public class ScanPreviewActivity extends AppCompatActivity {
         root.setPadding(dp(16), dp(12), dp(16), dp(24));
         scroll.addView(root);
 
-        MaterialTextView hint = new MaterialTextView(this);
+        TextView hint = new TextView(this);
         hint.setText("扫描结果已临时保存到 App 缓存。确认无误后点击保存，系统会让你选择保存位置。");
-        hint.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        hint.setTextAppearance(android.R.style.TextAppearance_Material_Body1);
         hint.setPadding(0, 0, 0, dp(12));
         root.addView(hint, matchWrap());
 
@@ -103,8 +100,8 @@ public class ScanPreviewActivity extends AppCompatActivity {
         previewLp.gravity = Gravity.CENTER_HORIZONTAL;
         root.addView(preview, previewLp);
 
-        MaterialTextView info = new MaterialTextView(this);
-        info.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall);
+        TextView info = new TextView(this);
+        info.setTextAppearance(android.R.style.TextAppearance_Material_Small);
         info.setPadding(0, dp(12), 0, 0);
         root.addView(info, matchWrap());
 
@@ -126,10 +123,10 @@ public class ScanPreviewActivity extends AppCompatActivity {
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
         buttons.setPadding(dp(16), dp(8), dp(16), dp(16));
-        MaterialButton discard = new MaterialButton(this);
+        Button discard = new Button(this);
         discard.setText("放弃");
         discard.setOnClickListener(v -> discardAndFinish());
-        MaterialButton save = new MaterialButton(this);
+        Button save = new Button(this);
         save.setText("保存");
         save.setOnClickListener(v -> saveLauncher.launch(defaultName));
         LinearLayout.LayoutParams buttonLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);

@@ -1,29 +1,25 @@
 package com.him1234.remotem1005;
 
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Toolbar;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.color.DynamicColors;
-import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
-import com.google.android.material.textview.MaterialTextView;
+import androidx.activity.ComponentActivity;
 
 /** 设置页：配置 Orange Pi 后端地址和可选 PIN。 */
-public class SettingsActivity extends AppCompatActivity {
-    private TextInputEditText baseUrlInput;
-    private TextInputEditText pinInput;
+public class SettingsActivity extends ComponentActivity {
+    private EditText baseUrlInput;
+    private EditText pinInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DynamicColors.applyToActivityIfAvailable(this);
         super.onCreate(savedInstanceState);
         setContentView(buildContent());
         baseUrlInput.setText(ConfigStore.getBaseUrl(this));
@@ -34,7 +30,7 @@ public class SettingsActivity extends AppCompatActivity {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
 
-        MaterialToolbar toolbar = new MaterialToolbar(this);
+        Toolbar toolbar = new Toolbar(this);
         toolbar.setTitle("设置");
         toolbar.setNavigationIcon(android.R.drawable.ic_menu_revert);
         toolbar.setNavigationOnClickListener(v -> finish());
@@ -46,15 +42,13 @@ public class SettingsActivity extends AppCompatActivity {
         root.setPadding(dp(16), dp(12), dp(16), dp(24));
         scroll.addView(root);
 
-        MaterialCardView card = card();
-        addToCard(card, title("连接配置"));
-        addToCard(card, body("填写 Orange Pi 上 printer-web 服务地址。示例：http://192.168.1.50:8080"));
+        root.addView(title("连接配置"), matchWrap());
+        root.addView(body("填写 Orange Pi 上 printer-web 服务地址。示例：http://192.168.1.50:8080"), matchWrap());
         baseUrlInput = input("后端地址", false);
-        pinInput = input("访问 PIN，未启用就留空", true);
-        addToCard(card, inputLayout("后端地址", baseUrlInput));
-        addToCard(card, inputLayout("访问 PIN", pinInput));
-        addToCard(card, button("保存配置", v -> saveConfig()));
-        root.addView(card, matchWrap());
+        pinInput = input("访问 PIN", true);
+        root.addView(labeledInput("后端地址", baseUrlInput));
+        root.addView(labeledInput("访问 PIN，未启用就留空", pinInput));
+        root.addView(button("保存配置", v -> saveConfig()));
 
         shell.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         InsetUtils.apply(this, toolbar, scroll);
@@ -69,66 +63,58 @@ public class SettingsActivity extends AppCompatActivity {
         finish();
     }
 
-    private TextInputEditText input(String hint, boolean password) {
-        TextInputEditText edit = new TextInputEditText(this);
+    private EditText input(String hint, boolean password) {
+        EditText edit = new EditText(this);
+        edit.setHint(hint);
         edit.setSingleLine(true);
         if (password) {
-            edit.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            edit.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
         } else {
-            edit.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+            edit.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         }
         return edit;
     }
 
-    private TextInputLayout inputLayout(String hint, TextInputEditText edit) {
-        TextInputLayout layout = new TextInputLayout(this);
-        layout.setHint(hint);
-        layout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_OUTLINE);
-        layout.addView(edit);
+    private View labeledInput(String label, EditText edit) {
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
         LinearLayout.LayoutParams lp = matchWrap();
         lp.topMargin = dp(12);
         layout.setLayoutParams(lp);
+        TextView labelView = new TextView(this);
+        labelView.setText(label);
+        labelView.setTextAppearance(android.R.style.TextAppearance_Material_Caption);
+        labelView.setTypeface(labelView.getTypeface(), android.graphics.Typeface.BOLD);
+        labelView.setPadding(0, 0, 0, dp(4));
+        layout.addView(labelView, matchWrap());
+        layout.addView(edit, matchWrap());
         return layout;
     }
 
-    private MaterialTextView title(String text) {
-        MaterialTextView view = new MaterialTextView(this);
+    private TextView title(String text) {
+        TextView view = new TextView(this);
         view.setText(text);
-        view.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium);
+        view.setTextAppearance(android.R.style.TextAppearance_Material_Medium);
+        view.setTypeface(view.getTypeface(), android.graphics.Typeface.BOLD);
         return view;
     }
 
-    private MaterialTextView body(String text) {
-        MaterialTextView view = new MaterialTextView(this);
+    private TextView body(String text) {
+        TextView view = new TextView(this);
         view.setText(text);
-        view.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        view.setTextAppearance(android.R.style.TextAppearance_Material_Body1);
         view.setPadding(0, dp(8), 0, 0);
         return view;
     }
 
-    private MaterialButton button(String text, View.OnClickListener listener) {
-        MaterialButton button = new MaterialButton(this);
+    private Button button(String text, View.OnClickListener listener) {
+        Button button = new Button(this);
         button.setText(text);
         button.setOnClickListener(listener);
         LinearLayout.LayoutParams lp = matchWrap();
         lp.topMargin = dp(16);
         button.setLayoutParams(lp);
         return button;
-    }
-
-    private MaterialCardView card() {
-        MaterialCardView card = new MaterialCardView(this);
-        card.setUseCompatPadding(true);
-        card.setRadius(dp(16));
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(16), dp(16), dp(16), dp(16));
-        card.addView(content);
-        return card;
-    }
-
-    private void addToCard(MaterialCardView card, View child) {
-        ((LinearLayout) card.getChildAt(0)).addView(child);
     }
 
     private LinearLayout.LayoutParams matchWrap() {

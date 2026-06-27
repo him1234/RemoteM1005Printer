@@ -1,6 +1,7 @@
 <resources>
-    <style name="Theme.RemoteM1005Printer" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:navigationBarColor">@color/md_theme_dark_background</item>
+    <style name="Theme.RemoteM1005Printer" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">@color/native_accent</item>
+        <item name="android:navigationBarColor">@android:color/background_dark</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>

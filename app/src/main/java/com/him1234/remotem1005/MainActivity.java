@@ -1,31 +1,26 @@
 package com.him1234.remotem1005;
 
 import android.app.Dialog;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
-import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toolbar;
 
+import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.color.DynamicColors;
-import com.google.android.material.divider.MaterialDivider;
-import com.google.android.material.textfield.MaterialAutoCompleteTextView;
-import com.google.android.material.textview.MaterialTextView;
 
 import java.io.File;
 import java.util.LinkedHashMap;
@@ -34,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /** 主界面：提供远程打印、扫描、状态查看和设备控制入口。 */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends ComponentActivity {
     private static final int MENU_SETTINGS = 1;
     private static final int MENU_ABOUT = 2;
 
@@ -45,20 +40,19 @@ public class MainActivity extends AppCompatActivity {
     private final String[] modeValues = new String[]{"Color", "Gray", "Lineart"};
     private final String[] scanFormatValues = new String[]{"PDF", "PNG"};
 
-    private MaterialAutoCompleteTextView paperSpinner;
-    private MaterialAutoCompleteTextView orientationSpinner;
-    private MaterialAutoCompleteTextView scanDpiSpinner;
-    private MaterialAutoCompleteTextView scanModeSpinner;
-    private MaterialAutoCompleteTextView scanFormatSpinner;
-    private MaterialTextView topStatusText;
-    private MaterialTextView topMetaText;
+    private Spinner paperSpinner;
+    private Spinner orientationSpinner;
+    private Spinner scanDpiSpinner;
+    private Spinner scanModeSpinner;
+    private Spinner scanFormatSpinner;
+    private TextView topStatusText;
+    private TextView topMetaText;
     private Dialog loadingDialog;
-    private MaterialTextView loadingText;
+    private TextView loadingText;
     private ActivityResultLauncher<String[]> printFileLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        DynamicColors.applyToActivityIfAvailable(this);
         super.onCreate(savedInstanceState);
         printFileLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::handlePrintPick);
         setContentView(buildContent());
@@ -79,47 +73,21 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        menu.add(0, MENU_SETTINGS, 0, "设置")
-                .setIcon(android.R.drawable.ic_menu_manage)
-                .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
-        menu.add(0, MENU_ABOUT, 1, "关于此软件")
-                .setIcon(android.R.drawable.ic_menu_info_details)
-                .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == MENU_SETTINGS) {
-            startActivity(new Intent(this, SettingsActivity.class));
-            return true;
-        }
-        if (item.getItemId() == MENU_ABOUT) {
-            startActivity(new Intent(this, AboutActivity.class));
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
     private View buildContent() {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
 
-        MaterialToolbar toolbar = new MaterialToolbar(this);
+        Toolbar toolbar = new Toolbar(this);
         toolbar.setTitle("Orange Pi HP M1005");
         toolbar.setSubtitle("远程打印与扫描");
-        setSupportActionBar(toolbar);
+        setupToolbarMenu(toolbar);
         shell.addView(toolbar, matchWrap());
 
         LinearLayout infoBar = new LinearLayout(this);
         infoBar.setOrientation(LinearLayout.VERTICAL);
         infoBar.setPadding(dp(16), dp(12), dp(16), dp(12));
-        topStatusText = new MaterialTextView(this);
-        topStatusText.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium);
-        topMetaText = new MaterialTextView(this);
-        topMetaText.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        topStatusText = text(android.R.style.TextAppearance_Material_Title, 0);
+        topMetaText = text(android.R.style.TextAppearance_Material_Body1, 0);
         topMetaText.setPadding(0, dp(6), 0, 0);
         infoBar.addView(topStatusText, matchWrap());
         infoBar.addView(topMetaText, matchWrap());
@@ -132,45 +100,56 @@ public class MainActivity extends AppCompatActivity {
         root.setPadding(dp(16), dp(12), dp(16), dp(24));
         scroll.addView(root);
 
-        MaterialCardView printCard = card();
-        addToCard(printCard, sectionLabel("文件打印"));
-        addToCard(printCard, bodyText("从手机选择 PDF、Word、图片或文本文件，提交到 Orange Pi 后端打印。"));
+        LinearLayout printSection = section(root, "文件打印");
+        printSection.addView(bodyText("从手机选择 PDF、Word、图片或文本文件，提交到 Orange Pi 后端打印。"));
         paperSpinner = dropdown(paperValues);
         orientationSpinner = dropdown(orientationValues);
-        addToCard(printCard, labeledInput("纸张", paperSpinner));
-        addToCard(printCard, labeledInput("方向", orientationSpinner));
-        addToCard(printCard, button("选择文件并上传打印", v -> pickPrintFile()));
-        root.addView(printCard, matchWrap());
+        printSection.addView(labeledInput("纸张", paperSpinner));
+        printSection.addView(labeledInput("方向", orientationSpinner));
+        printSection.addView(button("选择文件并上传打印", v -> pickPrintFile()));
 
-        MaterialCardView scanCard = card();
-        addToCard(scanCard, sectionLabel("扫描到手机"));
-        addToCard(scanCard, bodyText("可选择 PDF 或 PNG 输出。扫描完成后先进入 App 内预览页，再由你选择保存或放弃。"));
+        LinearLayout scanSection = section(root, "扫描到手机");
+        scanSection.addView(bodyText("可选择 PDF 或 PNG 输出。扫描完成后先进入 App 内预览页，再由你选择保存或放弃。"));
         scanDpiSpinner = dropdown(dpiValues);
         scanModeSpinner = dropdown(modeValues);
         scanFormatSpinner = dropdown(scanFormatValues);
-        addToCard(scanCard, labeledInput("DPI", scanDpiSpinner));
-        addToCard(scanCard, labeledInput("模式", scanModeSpinner));
-        addToCard(scanCard, labeledInput("输出格式", scanFormatSpinner));
-        addToCard(scanCard, button("开始扫描并预览", v -> startScan()));
-        root.addView(scanCard, matchWrap());
+        scanSection.addView(labeledInput("DPI", scanDpiSpinner));
+        scanSection.addView(labeledInput("模式", scanModeSpinner));
+        scanSection.addView(labeledInput("输出格式", scanFormatSpinner));
+        scanSection.addView(button("开始扫描并预览", v -> startScan()));
 
-        MaterialCardView serviceCard = card();
-        addToCard(serviceCard, sectionLabel("系统打印服务"));
-        addToCard(serviceCard, bodyText("启用 Android 打印服务后，其他 App 可以通过系统打印菜单选择这台 HP M1005。"));
-        addToCard(serviceCard, button("打开 Android 打印设置", v -> openPrintSettings()));
-        root.addView(serviceCard, matchWrap());
+        LinearLayout serviceSection = section(root, "系统打印服务");
+        serviceSection.addView(bodyText("启用 Android 打印服务后，其他 App 可以通过系统打印菜单选择这台 HP M1005。"));
+        serviceSection.addView(button("打开 Android 打印设置", v -> openPrintSettings()));
 
-        MaterialCardView toolsCard = card();
-        addToCard(toolsCard, sectionLabel("设备控制"));
-        addToCard(toolsCard, button("刷新设备状态", v -> refreshDeviceStatus(true)));
-        addToCard(toolsCard, button("唤醒 LCD 背光", v -> wakeLcd()));
-        addToCard(toolsCard, button("打开 Orange Pi 网页", v -> openWebUi()));
-        root.addView(toolsCard, matchWrap());
+        LinearLayout toolsSection = section(root, "设备控制");
+        toolsSection.addView(button("刷新设备状态", v -> refreshDeviceStatus(true)));
+        toolsSection.addView(button("唤醒 LCD 背光", v -> wakeLcd()));
+        toolsSection.addView(button("打开 Orange Pi 网页", v -> openWebUi()));
 
-        root.addView(new MaterialDivider(this), matchWrap());
         shell.addView(scroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         InsetUtils.apply(this, toolbar, scroll);
         return shell;
+    }
+
+    private void setupToolbarMenu(Toolbar toolbar) {
+        toolbar.getMenu().add(0, MENU_SETTINGS, 0, "设置")
+                .setIcon(android.R.drawable.ic_menu_manage)
+                .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+        toolbar.getMenu().add(0, MENU_ABOUT, 1, "关于此软件")
+                .setIcon(android.R.drawable.ic_menu_info_details)
+                .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER);
+        toolbar.setOnMenuItemClickListener(item -> {
+            if (item.getItemId() == MENU_SETTINGS) {
+                startActivity(new Intent(this, SettingsActivity.class));
+                return true;
+            }
+            if (item.getItemId() == MENU_ABOUT) {
+                startActivity(new Intent(this, AboutActivity.class));
+                return true;
+            }
+            return false;
+        });
     }
 
     private void refreshDeviceStatus(boolean showDialog) {
@@ -229,9 +208,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startScan() {
-        String dpi = String.valueOf(scanDpiSpinner.getText());
-        String mode = String.valueOf(scanModeSpinner.getText());
-        String format = String.valueOf(scanFormatSpinner.getText());
+        String dpi = selected(scanDpiSpinner);
+        String mode = selected(scanModeSpinner);
+        String format = selected(scanFormatSpinner);
         showLoading("正在扫描，请等待...");
         refreshTopStatus("扫描中", "DPI " + dpi + " / " + mode + " / " + format);
         worker.execute(() -> {
@@ -268,8 +247,8 @@ public class MainActivity extends AppCompatActivity {
         if (uri == null) {
             return;
         }
-        String paper = String.valueOf(paperSpinner.getText());
-        String orientation = String.valueOf(orientationSpinner.getText());
+        String paper = selected(paperSpinner);
+        String orientation = selected(orientationSpinner);
         runTask("正在上传打印文件...", () -> OrangePiClient.friendlyText(OrangePiClient.uploadPrintUri(this, uri, paper, orientation, 1)));
     }
 
@@ -310,11 +289,11 @@ public class MainActivity extends AppCompatActivity {
             box.setPadding(dp(28), dp(24), dp(28), dp(18));
             ProgressBar progress = new ProgressBar(this);
             box.addView(progress);
-            loadingText = new MaterialTextView(this);
+            loadingText = text(android.R.style.TextAppearance_Material_Body1, 0);
             loadingText.setGravity(Gravity.CENTER);
             loadingText.setPadding(0, dp(16), 0, 0);
             box.addView(loadingText, matchWrap());
-            loadingDialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            loadingDialog = new AlertDialog.Builder(this)
                     .setView(box)
                     .create();
             loadingDialog.setCanceledOnTouchOutside(false);
@@ -333,36 +312,31 @@ public class MainActivity extends AppCompatActivity {
         String run() throws Exception;
     }
 
-    private MaterialCardView card() {
-        MaterialCardView card = new MaterialCardView(this);
-        card.setUseCompatPadding(true);
-        card.setRadius(dp(16));
+    private LinearLayout section(LinearLayout root, String title) {
+        TextView label = sectionLabel(title);
+        LinearLayout.LayoutParams labelLp = matchWrap();
+        labelLp.topMargin = root.getChildCount() == 0 ? 0 : dp(18);
+        root.addView(label, labelLp);
+
+        LinearLayout section = new LinearLayout(this);
+        section.setOrientation(LinearLayout.VERTICAL);
+        section.setPadding(0, dp(8), 0, dp(8));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(12);
-        card.setLayoutParams(lp);
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(16), dp(16), dp(16), dp(16));
-        card.addView(content);
-        return card;
+        root.addView(section, lp);
+        return section;
     }
 
-    private void addToCard(MaterialCardView card, View child) {
-        ((LinearLayout) card.getChildAt(0)).addView(child);
-    }
-
-    private MaterialTextView sectionLabel(String text) {
-        MaterialTextView view = new MaterialTextView(this);
+    private TextView sectionLabel(String text) {
+        TextView view = text(android.R.style.TextAppearance_Material_Medium, android.graphics.Typeface.BOLD);
         view.setText(text);
-        view.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium);
-        view.setPadding(0, 0, 0, dp(8));
+        view.setAllCaps(false);
         return view;
     }
 
-    private MaterialTextView bodyText(String text) {
-        MaterialTextView view = new MaterialTextView(this);
+    private TextView bodyText(String text) {
+        TextView view = text(android.R.style.TextAppearance_Material_Body1, 0);
         view.setText(text);
-        view.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium);
+        view.setLineSpacing(0, 1.1f);
         view.setPadding(0, 0, 0, dp(12));
         return view;
     }
@@ -371,30 +345,44 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(0, 0, 0, dp(12));
-        MaterialTextView text = new MaterialTextView(this);
+        TextView text = text(android.R.style.TextAppearance_Material_Caption, android.graphics.Typeface.BOLD);
         text.setText(label);
-        text.setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge);
+        text.setPadding(0, 0, 0, dp(4));
         box.addView(text);
         box.addView(field, matchWrap());
         return box;
     }
 
-    private MaterialAutoCompleteTextView dropdown(String[] values) {
-        MaterialAutoCompleteTextView view = new MaterialAutoCompleteTextView(this);
-        view.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, values));
-        view.setText(values[0], false);
-        view.setHint("请选择");
+    private Spinner dropdown(String[] values) {
+        Spinner view = new Spinner(this);
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, values);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        view.setAdapter(adapter);
         return view;
     }
 
-    private MaterialButton button(String text, View.OnClickListener listener) {
-        MaterialButton button = new MaterialButton(this);
+    private Button button(String text, View.OnClickListener listener) {
+        Button button = new Button(this);
         button.setText(text);
         button.setOnClickListener(listener);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = dp(8);
         button.setLayoutParams(lp);
         return button;
+    }
+
+    private String selected(Spinner spinner) {
+        Object item = spinner.getSelectedItem();
+        return item == null ? "" : String.valueOf(item);
+    }
+
+    private TextView text(int appearance, int style) {
+        TextView view = new TextView(this);
+        view.setTextAppearance(appearance);
+        if (style != 0) {
+            view.setTypeface(view.getTypeface(), style);
+        }
+        return view;
     }
 
     private LinearLayout.LayoutParams matchWrap() {
