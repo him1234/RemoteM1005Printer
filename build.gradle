@@ -1,3 +1,9 @@
 plugins {
     id "com.android.application" version "8.6.1" apply false
 }
+
+tasks.register("buildAllApks") {
+    group = "build"
+    description = "Build both debug and release APKs"
+    dependsOn ":app:assembleDebug", ":app:assembleRelease"
+}

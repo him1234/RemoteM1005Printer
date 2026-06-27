@@ -5,9 +5,7 @@
 ## UI 规范
 
 - 最低支持 Android 10
-- Android 12 及以上启用动态配色
 - 支持暗黑模式
-- 使用 Material 3 风格组件
 - 界面尽量符合 Android 最新原生设计语言
 
 ## 功能
@@ -43,13 +41,14 @@ android/RemoteM1005Printer
 然后执行：
 
 ```bash
-./gradlew assembleDebug
+./gradlew buildAllApks
 ```
 
 生成的 APK 通常在：
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
+app/build/outputs/apk/release/app-release.apk
 ```
 
 ## 在线编译 APK
@@ -60,7 +59,7 @@ app/build/outputs/apk/debug/app-debug.apk
 .github/workflows/android-build.yml
 ```
 
-把本目录作为 GitHub 仓库上传后，进入 `Actions`，手动运行 `Build Android APK`，构建完成后在 `Artifacts` 下载 `RemoteM1005Printer-debug-apk`。
+把本目录作为 GitHub 仓库上传后，进入 `Actions`，手动运行 `Build Android APK`，构建完成后在 `Artifacts` 下载 `RemoteM1005Printer-debug-apk` 和 `RemoteM1005Printer-release-apk`。
 
 ## 后端要求
 
